@@ -1,163 +1,121 @@
-# 🧠 Emotion Recognition — EfficientNetV2S
-**Deteksi 4 Emosi Wajah: Angry | Happy | Neutral | Sad**
-Target Akurasi: ≥ 80% | Real-time Webcam | TensorFlow/Keras
+Berikut adalah draf `README.md` yang profesional, rapi, dan sudah disesuaikan dengan kode serta struktur folder proyek Mood Bites milikmu. Kamu bisa langsung *copy-paste* teks di bawah ini ke dalam file `README.md`.
 
----
+```markdown
+# Mood Bites - Emotion Detection API 🎭🍔
 
-## 📁 Struktur File
+A FastAPI-based backend service for detecting human emotions from facial images. This API acts as the core computer vision engine for the **Mood Bites** project, analyzing user moods to seamlessly integrate with an IoT system for personalized food recommendations.
+
+## 📌 Features
+* **Fast & Lightweight:** Built on FastAPI for high performance.
+* **Smart Face Cropping:** Utilizes OpenCV's Haar Cascade to detect and isolate faces before passing them to the model.
+* **ONNX Runtime:** Uses an optimized EfficientNet model (`emotion_efficientnet.onnx`) for fast CPU inference.
+* **Cross-Platform:** Uses dynamic path resolution (`os.path`), making it safe to deploy on both Windows and Linux (VPS) without altering the code.
+* **4-Class Emotion Output:** Accurately classifies emotions into `Angry`, `Happy`, `Neutral`, and `Sad`.
+
+## 📁 Project Structure
+
+```text
+MODEL_PYTHON_EXECUTION_API/
+│
+├── app.py                      # Main FastAPI application script
+├── emotion_efficientnet.onnx   # Pre-trained ONNX emotion detection model
+├── requirements.txt            # List of Python dependencies
+├── README.md                   # Project documentation
+└── .gitattributes              # Git configurations (e.g., for Git LFS)
 
 ```
-emotion_project/
-├── train_emotion.py       ← Script training utama
-├── realtime_emotion.py    ← Deteksi real-time webcam
-├── prepare_dataset.py     ← Helper siapkan dataset FER2013
-├── dataset/               ← Folder dataset kamu
-│   ├── train/
-│   │   ├── angry/
-│   │   ├── happy/
-│   │   ├── neutral/
-│   │   └── sad/
-│   ├── val/  (struktur sama)
-│   └── test/ (struktur sama)
-└── models/                ← Model hasil training (auto-dibuat)
-    ├── emotion_model_final.keras
-    └── emotion_model.tflite
-```
 
----
+## 🚀 Installation & Setup
 
-## 🚀 Langkah-Langkah
-
-### 1. Install Dependencies
+1. **Clone the repository (if applicable):**
 ```bash
-pip install tensorflow opencv-python scikit-learn matplotlib seaborn pillow
+git clone <your-github-repo-url>
+cd <your-repository-folder>
+
 ```
 
-### 2. Siapkan Dataset
-**Opsi A — FER2013 (paling mudah):**
+
+2. **Install the required dependencies:**
+Make sure you have Python installed. It is recommended to use a virtual environment.
 ```bash
-# Download dari: https://www.kaggle.com/datasets/msambare/fer2013
-# Setelah download & extract:
-python prepare_dataset.py --src ./fer2013 --dst ./dataset
+pip install -r requirements.txt
+
 ```
 
-**Opsi B — RAF-DB (akurasi lebih tinggi ~86%):**
-```
-Daftar di: http://www.whdeng.cn/RAF/model2.html
-Susun manual ke folder dataset/train/val/test/[angry|happy|neutral|sad]/
-```
 
-**Target jumlah data minimum:**
-| Kelas   | Train | Val  | Test |
-|---------|-------|------|------|
-| Angry   | ≥1500 | ≥200 | ≥200 |
-| Happy   | ≥2000 | ≥300 | ≥300 |
-| Neutral | ≥1500 | ≥200 | ≥200 |
-| Sad     | ≥1500 | ≥200 | ≥200 |
+*(Ensure `requirements.txt` contains: `fastapi`, `uvicorn`, `python-multipart`, `onnxruntime`, `numpy`, `opencv-python`)*
 
-### 3. Training
+## 💻 How to Run the Server
+
+Start the API server by running the Python script directly:
+
 ```bash
-python train_emotion.py
-```
-Training berjalan dalam **2 fase**:
-- **Fase 1 (Warmup, ~10 epoch):** Base EfficientNetV2S dibekukan, hanya head yang dilatih
-- **Fase 2 (Fine-tune, ~40 epoch):** 60 layer terakhir EfficientNetV2S di-unfreeze
+python app.py
 
-### 4. Jalankan Real-time Detection
+```
+
+Alternatively, you can run it using Uvicorn:
+
 ```bash
-# Webcam default (index 0)
-python realtime_emotion.py
+uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 
-# Webcam index lain
-python realtime_emotion.py --source 1
-
-# Video file
-python realtime_emotion.py --source ./video.mp4
-
-# Simpan output ke file
-python realtime_emotion.py --save
 ```
 
-**Kontrol keyboard:**
-| Tombol | Fungsi |
-|--------|--------|
-| Q / ESC | Keluar |
-| S | Screenshot |
-| P | Pause/Resume |
-| R | Reset smoothing buffer |
+You should see a message in the terminal indicating that the model is ready and Uvicorn is running:
+`✅ Model ready | input: (260, 260)`
+`INFO: Uvicorn running on http://0.0.0.0:8000`
 
----
+## 📡 API Endpoints
 
-## ⚙️ Konfigurasi Penting (di train_emotion.py)
+### 1. Health Check
 
-```python
-CONFIG = {
-    "img_size"       : (224, 224),  # ukuran input model
-    "batch_size"     : 32,          # kurangi ke 16 jika GPU OOM
-    "epochs_warmup"  : 10,
-    "epochs_finetune": 40,          # tambah jika akurasi masih rendah
-    "unfreeze_layers": 60,          # tambah jika underfitting
-    "dropout_rate"   : 0.4,
-    "label_smoothing": 0.1,
-    "use_mixed_precision": True,    # set False jika GPU lama
+Check if the server is running properly.
+
+* **URL:** `/health`
+* **Method:** `GET`
+* **Response:**
+```json
+{
+    "status": "ok"
 }
-```
-
----
-
-## 🎯 Tips Meningkatkan Akurasi
-
-| Problem | Solusi |
-|---------|--------|
-| Akurasi < 80% | Tambah data, tambah epoch fine-tune |
-| Overfitting (val acc turun) | Naikkan dropout_rate ke 0.5, tambah L2 |
-| Training lambat | Kurangi batch_size, aktifkan mixed_precision |
-| Model besar | Pakai EfficientNetV2B0 (lebih kecil dari V2S) |
-| Akurasi kelas "Sad" rendah | Cek jumlah data sad, gunakan class_weight |
-
----
-
-## 📊 Ekspektasi Akurasi
-
-| Dataset | Kelas | Ekspektasi Akurasi |
-|---------|-------|-------------------|
-| FER2013 (7 kelas) | 7 | ~65-75% |
-| FER2013 (4 kelas kita) | 4 | **~75-85%** |
-| RAF-DB (4 kelas kita) | 4 | **~85-90%** |
-
-> ℹ️ Akurasi meningkat saat menggunakan 4 kelas karena kelas sulit (disgust, fear, surprise) dihapus.
-
----
-
-## 🔧 Arsitektur Model
 
 ```
-Input (224×224×3)
-    ↓
-EfficientNetV2S (ImageNet pretrained)
-    ↓
-GlobalAveragePooling2D
-    ↓
-BatchNorm → Dense(512, ReLU) → Dropout(0.4)
-    ↓
-BatchNorm → Dense(128, ReLU) → Dropout(0.3)
-    ↓
-Dense(4, Softmax)  ← [Angry, Happy, Neutral, Sad]
+
+
+
+### 2. Detect Mood
+
+Upload an image to detect the dominant emotion.
+
+* **URL:** `/detect-mood`
+* **Method:** `POST`
+* **Content-Type:** `multipart/form-data`
+* **Body:** `image` (File - The image containing a face)
+* **Success Response:**
+```json
+{
+    "mood": "Happy",
+    "confidence": 0.9421,
+    "all_emotions": {
+        "Angry": 0.0123,
+        "Happy": 0.9421,
+        "Neutral": 0.0341,
+        "Sad": 0.0115
+    }
+}
+
 ```
 
-**Optimizer:** AdamW + weight_decay + gradient clipping
-**Loss:** Categorical Crossentropy + Label Smoothing (0.1)
-**Class Weights:** Otomatis dihitung dari distribusi data
 
----
 
-## 📦 Requirements
+## 🧪 Testing the API
+
+You can easily test the API directly from your browser without any frontend!
+
+1. Run the server.
+2. Open your web browser and navigate to: **http://localhost:8000/docs**
+3. Use the built-in **Swagger UI** to upload images and see the JSON response instantly.
 
 ```
-tensorflow>=2.12
-opencv-python>=4.7
-scikit-learn>=1.2
-matplotlib>=3.6
-seaborn>=0.12
-pillow>=9.4
+
 ```
