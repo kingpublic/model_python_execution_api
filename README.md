@@ -1,4 +1,3 @@
-Berikut adalah draf `README.md` yang profesional, rapi, dan sudah disesuaikan dengan kode serta struktur folder proyek Mood Bites milikmu. Kamu bisa langsung *copy-paste* teks di bawah ini ke dalam file `README.md`.
 
 ```markdown
 # Mood Bites - Emotion Detection API 🎭🍔
