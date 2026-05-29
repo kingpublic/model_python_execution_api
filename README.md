@@ -116,5 +116,3 @@ You can easily test the API directly from your browser without any frontend!
 3. Use the built-in **Swagger UI** to upload images and see the JSON response instantly.
 
 ```
-
-```
