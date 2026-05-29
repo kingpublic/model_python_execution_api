@@ -114,5 +114,3 @@ You can easily test the API directly from your browser without any frontend!
 1. Run the server.
 2. Open your web browser and navigate to: **http://localhost:8000/docs**
 3. Use the built-in **Swagger UI** to upload images and see the JSON response instantly.
-
-```
