@@ -5,6 +5,15 @@ import numpy as np
 import cv2
 import os
 import httpx
+import logging
+
+# ── Logging config (real-time, tidak buffered) ────────────────────────────────
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%H:%M:%S",
+)
+log = logging.getLogger(__name__)
 
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH  = os.path.join(BASE_DIR, "emotion_efficientnet.onnx")
@@ -26,23 +35,27 @@ SH     = sess.get_inputs()[0].shape
 IMG_SZ = (SH[3], SH[2]) if len(SH) == 4 else (260, 260)
 det    = cv2.CascadeClassifier(
              cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-print(f"✅ Model ready | input: {IMG_SZ}")
+log.info(f"✅ Model ready | input: {IMG_SZ}")
 
 
 @app.post("/detect-mood")
 async def detect_mood(image: UploadFile = File(...)):
+    log.debug("── /detect-mood dipanggil ──")
 
     # 1. Decode gambar
     raw = await image.read()
     arr = np.frombuffer(raw, dtype=np.uint8)
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if img is None:
+        log.error("Gambar tidak valid / gagal decode")
         raise HTTPException(400, detail="Gambar tidak valid")
+    log.debug(f"Gambar OK | shape={img.shape}")
 
     # 2. Crop wajah, fallback ke seluruh gambar
     gray  = cv2.createCLAHE(2.0, (8, 8)).apply(
                 cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
     faces = det.detectMultiScale(gray, 1.1, 5, minSize=(40, 40))
+    log.debug(f"Wajah terdeteksi: {len(faces)}")
     if len(faces) > 0:
         x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
         pad = int(0.15 * min(w, h)); H, W = img.shape[:2]
@@ -60,9 +73,10 @@ async def detect_mood(image: UploadFile = File(...)):
     # 4. Inferensi
     logits = sess.run([OUT_NM], {IN_NM: inp})[0][0]
     logits -= logits.max()
-    p8  = np.exp(logits) / np.exp(logits).sum()
-    p4  = p8[IDX_4]; p4 /= p4.sum() + 1e-8
+    p8   = np.exp(logits) / np.exp(logits).sum()
+    p4   = p8[IDX_4]; p4 /= p4.sum() + 1e-8
     best = int(np.argmax(p4))
+    log.debug(f"Inferensi OK | mood={EMOTIONS[best]} conf={p4[best]:.4f}")
 
     # 5. Susun hasil
     result = {
@@ -73,18 +87,17 @@ async def detect_mood(image: UploadFile = File(...)):
     }
 
     # 6. Kirim ke webhook n8n
+    log.info(f"📤 Kirim webhook → {WEBHOOK_URL}")
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            r = await client.post(
-                WEBHOOK_URL,
-                json=result,
-                headers={"Content-Type": "application/json"}
-            )
-            print(f"📤 Webhook → status={r.status_code} body={r.text[:200]}")
+            r = await client.post(WEBHOOK_URL, json=result)
+            log.info(f"✅ Webhook response | status={r.status_code} body={r.text[:300]}")
+    except httpx.ConnectError as e:
+        log.error(f"❌ Webhook ConnectError (DNS/jaringan gagal): {e}")
     except httpx.TimeoutException:
-        print("⚠️  Webhook timeout (>5s)")
+        log.error("❌ Webhook timeout >5s")
     except Exception as e:
-        print(f"⚠️  Webhook error: {type(e).__name__}: {e}")
+        log.exception(f"❌ Webhook error tak terduga: {e}")
 
     return result
 
