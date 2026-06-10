@@ -4,10 +4,4 @@ services:
     ports:
       - "8067:8000"
     restart: unless-stopped
-    networks:
-      - moodbites-network
-
-networks:
-  moodbites-network:
-    external: true
 
