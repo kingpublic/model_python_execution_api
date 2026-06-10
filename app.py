@@ -27,8 +27,6 @@ IMG_SZ = (SH[3], SH[2]) if len(SH) == 4 else (260, 260)
 det    = cv2.CascadeClassifier(
              cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 
-print(f"✅ Model ready | input: {IMG_SZ}")
-
 def send_webhook(payload: dict):
     try:
         r = requests.post(
@@ -37,13 +35,15 @@ def send_webhook(payload: dict):
             headers={"Content-Type": "application/json"},
             timeout=5
         )
-        print(f"✅ Webhook sent | status: {r.status_code}")
+        r.raise_for_status()
     except requests.exceptions.Timeout:
-        print("⚠️ Webhook timeout")
+        raise HTTPException(504, detail="Webhook timeout: N8N tidak merespons")
     except requests.exceptions.ConnectionError as e:
-        print(f"⚠️ Webhook connection error: {e}")
+        raise HTTPException(502, detail=f"Webhook connection error: {e}")
+    except requests.exceptions.HTTPError as e:
+        raise HTTPException(502, detail=f"Webhook HTTP error: {e}")
     except requests.exceptions.RequestException as e:
-        print(f"⚠️ Webhook failed: {e}")
+        raise HTTPException(502, detail=f"Webhook failed: {e}")
 
 @app.post("/detect-mood")
 async def detect_mood(image: UploadFile = File(...)):
@@ -81,8 +81,6 @@ async def detect_mood(image: UploadFile = File(...)):
         "all_emotions": {e: round(float(p), 4)
                          for e, p in zip(EMOTIONS, p4)},
     }
-
-    print("tes")
 
     send_webhook(result)
 
