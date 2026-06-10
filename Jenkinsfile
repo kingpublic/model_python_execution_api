@@ -42,8 +42,7 @@ pipeline {
                         ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no \
                             "$HOST_USER@$HOST_IP" "
                                 docker compose -f $DEPLOY_DIR/docker-compose.yml down || true &&
-                                docker build -t $IMAGE_NAME:$IMAGE_TAG $DEPLOY_DIR &&
-                                docker compose -f $DEPLOY_DIR/docker-compose.yml up -d
+                                docker compose -f $DEPLOY_DIR/docker-compose.yml up -d --build --force-recreate
                             "
                     '''
                 }
