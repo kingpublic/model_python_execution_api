@@ -12,7 +12,8 @@ EMOTIONS   = ["Angry", "Happy", "Neutral", "Sad"]
 IDX_4      = [0, 4, 5, 6]
 MEAN       = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 STD        = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-WEBHOOK_URL = "https://n8n.moodbites.qzz.io/webhook/e4c24770-165d-49d7-8c7d-1c7d6509ec5f"
+# WEBHOOK_URL = "https://n8n.moodbites.qzz.io/webhook/e4c24770-165d-49d7-8c7d-1c7d6509ec5f"
+WEBHOOK_URL = "https://n8n.moodbites.qzz.io/webhook-test/e4c24770-165d-49d7-8c7d-1c7d6509ec5f"
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"],
