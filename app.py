@@ -75,7 +75,11 @@ async def detect_mood(image: UploadFile = File(...)):
     # 6. Kirim ke webhook n8n
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            r = await client.post(WEBHOOK_URL, json=result)
+            r = await client.post(
+                WEBHOOK_URL,
+                json=result,
+                headers={"Content-Type": "application/json"}
+            )
             print(f"📤 Webhook → status={r.status_code} body={r.text[:200]}")
     except httpx.TimeoutException:
         print("⚠️  Webhook timeout (>5s)")
