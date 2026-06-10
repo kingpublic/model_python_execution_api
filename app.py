@@ -82,6 +82,8 @@ async def detect_mood(image: UploadFile = File(...)):
                          for e, p in zip(EMOTIONS, p4)},
     }
 
+    print("tes")
+
     send_webhook(result)
 
     return result
