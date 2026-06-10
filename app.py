@@ -4,8 +4,9 @@ import onnxruntime as ort
 import numpy as np
 import cv2
 import os
-import httpx
+import requests
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "emotion_efficientnet.onnx")
@@ -28,14 +29,32 @@ IMG_SZ = (SH[3], SH[2]) if len(SH) == 4 else (260, 260)
 det    = cv2.CascadeClassifier(
              cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 
+# ThreadPoolExecutor untuk menjalankan requests (sync) secara non-blocking
+_executor = ThreadPoolExecutor(max_workers=4)
+
 print(f"✅ Model ready | input: {IMG_SZ}")
 
-async def fire_webhook(payload: dict):
+def _send_webhook(payload: dict):
+    """Fungsi sync yang dijalankan di thread terpisah agar tidak blocking event loop."""
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post(N8N_WEBHOOK, json=payload)
-    except Exception as e:
-        print(f"⚠️ Webhook failed: {e}")
+        response = requests.post(
+            N8N_WEBHOOK,
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=5.0
+        )
+        print(f"✅ Webhook sent | status: {response.status_code}")
+    except requests.exceptions.ConnectionError as e:
+        print(f"⚠️ Webhook ConnectionError: {e}")
+    except requests.exceptions.Timeout:
+        print(f"⚠️ Webhook Timeout: N8N tidak merespons dalam 5 detik")
+    except requests.exceptions.RequestException as e:
+        print(f"⚠️ Webhook failed: {type(e).__name__}: {e}")
+
+async def fire_webhook(payload: dict):
+    """Jalankan _send_webhook di thread pool agar tidak blocking async event loop."""
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(_executor, _send_webhook, payload)
 
 @app.post("/detect-mood")
 async def detect_mood(image: UploadFile = File(...)):
@@ -78,8 +97,8 @@ async def detect_mood(image: UploadFile = File(...)):
                          for e, p in zip(EMOTIONS, p4)},
     }
 
-    # 5. Hit n8n webhook (non-blocking)
-    asyncio.create_task(fire_webhook(result))
+    # 5. Hit n8n webhook (non-blocking, di thread terpisah)
+    await fire_webhook(result)
 
     # 6. Return JSON
     return result
@@ -91,3 +110,4 @@ def health():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=False)
+
